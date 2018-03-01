@@ -1,11 +1,11 @@
 import RMTypes
 
-import Data.Map
+import qualified Data.Map as Map
 
 arg1 :: Integer -> RegisterState
 arg1 = Map.singleton 1
 
-args :: Integer -> RegisterState
+args :: [Integer] -> RegisterState
 args = Map.fromList . zip [1..]
 
 adder :: RegisterMachine
