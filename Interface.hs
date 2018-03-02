@@ -56,18 +56,21 @@ customShowCodeBlockTransitions t f a@(l, i@(DEC r j1 j2),  rs) =
         j = if n > 0 then j1 else j2
 
 customTraceJumpsInComputation :: 
-  Natural -> (ComputationState -> Location -> String) -> RegisterMachine -> [Natural] -> (Natural, [String])
+  Natural -> (ComputationState -> Location -> String) -> RegisterMachine -> [Natural] -> (Natural, Int, [String])
 customTraceJumpsInComputation t f rm = 
       getPresentOnly . 
       runWriter . 
       evalStateT (runAndLog (customShowCodeBlockTransitions t f) rm) . 
       args
-  where getPresentOnly (n,ls) = (n, fmap fromJust $ filter isJust ls)
+  where getPresentOnly (n, ls) = (n, length ls, fmap fromJust $ filter isJust ls)
 
 customPrintJumpsInComputation :: 
   Natural -> (ComputationState -> Location -> String) -> RegisterMachine -> [Natural] -> IO Natural
-customPrintJumpsInComputation t f rm args = sequence_ (fmap putStrLn log) >> return n
-  where (n, log) = customTraceJumpsInComputation t f rm args
+customPrintJumpsInComputation t f rm args = do
+    sequence_ (fmap putStrLn log)
+    putStrLn (show nJumps ++ " instructions in total")
+    return n
+  where (n, nJumps, log) = customTraceJumpsInComputation t f rm args
 
 printMachine :: RegisterMachine -> IO ()
 printMachine = sequence_ . fmap (\(i,a) -> putStrLn $ show i ++ ": " ++ show a) . zip [0..]

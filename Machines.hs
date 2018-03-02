@@ -37,21 +37,21 @@ mapReg = fmap . mapInstrReg
 
 type MachineAssembler k = Map k Location -> Natural -> RegisterMachine -> RegisterMachine
 
-assembleOneHaltMachine :: (Show k, Ord k) => Map k RegisterMachine -> k -> k -> Map k (MachineAssembler k) -> RegisterMachine
-assembleOneHaltMachine machines startMachine haltName plugMap = fold assembled ++ [HALT]
+assembleOneHaltMachine :: Ord k => Map k (RegisterMachine, MachineAssembler k) -> k -> k -> RegisterMachine
+assembleOneHaltMachine machines startMachine haltName = simplifyHalts $ fold assembled ++ [HALT]
   where names = startMachine : List.delete startMachine (Map.keys machines)
-        pos = reverse . foldr (\name ls@(x:_) -> x + fromIntegral (length $ machines!name) : ls) [0] $ reverse names 
+        pos = reverse . foldr (\name ls@(x:_) -> x + fromIntegral (length . fst $ machines!name) : ls) [0] $ reverse names 
         posMap = Map.fromList $ zip (names ++ [haltName]) pos
-        assembled = fmap (\name -> (plugMap!name) posMap (posMap!name) (machines!name)) names
+        assembled = fmap (\name -> (snd $ machines!name) posMap (posMap!name) (fst $ machines!name)) names
 
-assembleTwoHaltMachine :: Ord k => Map k RegisterMachine -> k -> k -> k -> Map k (MachineAssembler k) -> RegisterMachine
-assembleTwoHaltMachine machines startMachine haltName exitName plugMap = fold assembled ++ [HALT, HALT]
+assembleTwoHaltMachine :: Ord k => Map k (RegisterMachine, MachineAssembler k) -> k -> k -> k -> RegisterMachine
+assembleTwoHaltMachine machines startMachine haltName exitName = fold assembled ++ [HALT, HALT]
   where names = startMachine : List.delete startMachine (Map.keys machines)
-        pos' = reverse $ foldr (\name ls@(x:_) -> x + fromIntegral (length $ machines!name) : ls) [0] names
+        pos' = reverse $ foldr (\name ls@(x:_) -> x + fromIntegral (length . fst $ machines!name) : ls) [0] names
         pos = pos' ++ [last pos' + 1]
         posMap = Map.fromList $ zip (names ++ [haltName, exitName]) pos
-        assembled = fmap (\name -> (plugMap!name) posMap (posMap!name) (machines!name)) names
-
+        assembled = fmap (\name -> (snd $ machines!name) posMap (posMap!name) (fst $ machines!name)) names
+        
 shiftCode :: Natural -> RegisterMachine -> RegisterMachine
 shiftCode n = mapLoc (+n)
 
@@ -134,45 +134,26 @@ oneOutput halt m = plugOneAndShift (m!halt)
 twoOutput :: Ord k => k -> k -> MachineAssembler k
 twoOutput halt exit m = plugTwoAndShift (m!halt) (m!exit)
 
---simplifyHalts $
 universal :: [Register] -> RegisterMachine
-universal [dst, p, a, pc, n, c, r, s, t, z] = assembleOneHaltMachine machines "push0toA" "halt" wiring
+universal [dst, p, a, pc, n, c, r, s, t, z] = assembleOneHaltMachine machines "push0toA" "halt"
   where machines = Map.fromList
-          [ ("push0toA", zeroReg a),
-            ("setTtoP", copyReg p t z),
-            ("popTtoN", pop t n z),
-            ("decPC", dec pc),
-            ("popNtoC", pop n c z),
-            ("popAtoR0", pop a dst z),
-            ("popAtoR", pop a r z),
-            ("decC_1", dec c),
-            ("decC_2", dec c),
-            ("pushRtoS", push r s z),
-            ("incR", inc r),
-            ("incN", inc n),
-            ("popNtoPC", pop n pc z),
-            ("decR", dec r),
-            ("setPCtoN", copyReg n pc z),
-            ("pushRtoA", push r a z),
-            ("popStoR", pop s r z)]
-        wiring = Map.fromList
-          [ ("push0toA",  oneOutput "setTtoP"), 
-            ("setTtoP",   oneOutput "popTtoN"), 
-            ("popTtoN",   twoOutput "decPC"     "popAtoR0"),
-            ("decPC",     twoOutput "popTtoN"   "popNtoC"),
-            ("popNtoC",   twoOutput "popAtoR"   "popAtoR0"),
-            ("popAtoR0",  twoOutput "halt"      "halt"),
-            ("popAtoR",   twoOutput "decC_1"    "decC_1"),
-            ("decC_1",    twoOutput "decC_2"    "incR"),
-            ("decC_2",    twoOutput "pushRtoS"  "incN"),
-            ("pushRtoS",  oneOutput "popAtoR"),
-            ("incR",      oneOutput "setPCtoN"),
-            ("incN",      oneOutput "popNtoPC"),
-            ("popNtoPC",  twoOutput "decR"      "decR"),
-            ("decR",      twoOutput "pushRtoA"  "setPCtoN"),
-            ("setPCtoN",  oneOutput "pushRtoA"),
-            ("pushRtoA",  oneOutput "popStoR"),
-            ("popStoR",   twoOutput "pushRtoA"  "setTtoP")]
+          [ ("push0toA",  (zeroReg a,       oneOutput "setTtoP")),
+            ("setTtoP",   (copyReg p t z,   oneOutput "popTtoN")),
+            ("popTtoN",   (pop t n z,       twoOutput "decPC"     "popAtoR0")),
+            ("decPC",     (dec pc,          twoOutput "popTtoN"   "popNtoC")),
+            ("popNtoC",   (pop n c z,       twoOutput "popAtoR"   "popAtoR0")),
+            ("popAtoR0",  (pop a dst z,     twoOutput "halt"      "halt")),
+            ("popAtoR",   (pop a r z,       twoOutput "decC_1"    "decC_1")),
+            ("decC_1",    (dec c,           twoOutput "decC_2"    "incR")),
+            ("decC_2",    (dec c,           twoOutput "pushRtoS"  "incN")),
+            ("pushRtoS",  (push r s z,      oneOutput "popAtoR")),
+            ("incR",      (inc r,           oneOutput "setPCtoN")),
+            ("incN",      (inc n,           oneOutput "popNtoPC")),
+            ("popNtoPC",  (pop n pc z,      twoOutput "decR"      "decR")),
+            ("decR",      (dec r,           twoOutput "pushRtoA"  "setPCtoN")),
+            ("setPCtoN",  (copyReg n pc z,  oneOutput "pushRtoA")),
+            ("pushRtoA",  (push r a z,      oneOutput "popStoR")),
+            ("popStoR",   (pop s r z,       twoOutput "pushRtoA"  "setTtoP"))]
 
 universalInstance :: RegisterMachine
 universalInstance = universal [0..9]

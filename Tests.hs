@@ -16,9 +16,9 @@ simple1 :: RegisterMachine
 simple1 = copyReg 1 2 3
 
 simple2 :: RegisterMachine
-simple2 = assembleOneHaltMachine machines "copy" "halt" wiring
-  where machines = Map.fromList [("copy", simple1), ("add", adder)]
-        wiring   = Map.fromList [("copy", oneOutput "add"),("add", oneOutput "halt")]
+simple2 = assembleOneHaltMachine machines "copy" "halt"
+  where machines = Map.fromList [("copy", (simple1,  oneOutput "add")), 
+                                 ("add",  (adder,    oneOutput "halt"))]
 
 testUniversal :: RegisterMachine -> [Natural] -> Maybe (Natural, Natural)
 testUniversal m args = if correct == univ then Nothing else Just (correct, univ)
@@ -31,23 +31,24 @@ showUniversalState :: ComputationState -> Location -> String
 showUniversalState (l, i, rs) j = newBlock ++ "\t("++show l++"->"++show j++"),\tstate " ++ registerState
   where newBlock = case j of
                     0   -> "push0toA"
-                    105 -> "setTtoP"
-                    73  -> "popTtoN"
-                    8   -> "decPC"
-                    40  -> "popNtoC"
-                    29  -> "popAtoR0"
-                    112 -> "halt"
-                    18  -> "popAtoR"
-                    2   -> "decC_1"
-                    5   -> "decC_2"
-                    91  -> "pushRtoS"
-                    16  -> "incR"
-                    14  -> "incN"
-                    51  -> "popNtoPC"
-                    11  -> "decR"
-                    98  -> "setPCtoN"
-                    84  -> "pushRtoA"
-                    62  -> "popStoR"
+                    1   -> "decC_1"
+                    2   -> "decC_2"
+                    3   -> "decPC"
+                    4   -> "decR"
+                    5   -> "incN"
+                    6   -> "incR"
+                    7   -> "popAtoR"
+                    16  -> "popAtoR0"
+                    25  -> "popNtoC"
+                    34  -> "popNtoPC"
+                    43  -> "popStoR"
+                    52  -> "popTtoN"
+                    61  -> "pushRtoA"
+                    67  -> "pushRtoS"
+                    73  -> "setPCtoN"
+                    79  -> "setTtoP"
+                    85  -> "halt"
+                    _   -> "**UNKNOWN**"
         registerState = "PC = " ++ show (getRegister 3 rs) ++ 
                         ", instruction: " ++ show (natToInstr $ getRegister 4 rs) ++
                         ", simulated RS: " ++ show (natToList $ getRegister 2 rs) 
