@@ -6,9 +6,12 @@ Run machine.exe located in the root folder.
 
 #### Linux
 
+No executable provided, follow instructions in Compiling
+
+### Compiling
+
 - install Data.Natural (https://hackage.haskell.org/package/natural-numbers)
 - compile Main.hs in the src folder
-
 
 ### Commands
 
