@@ -24,4 +24,4 @@ type RegisterState = Map Register Natural
 type ComputationState = (Location, Instruction, RegisterState)
 
 -- TODO: implement
-type Format = String 
+type Format = String
