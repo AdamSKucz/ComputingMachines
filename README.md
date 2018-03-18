@@ -1,3 +1,5 @@
+no longer being developed, superseded by WIP https://github.com/AdamSKucz/Computability
+
 ### Running
 
 #### Windows
