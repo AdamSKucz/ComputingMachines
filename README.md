@@ -2,7 +2,7 @@
 
 #### Windows
 
-Run machine.exe located in the root folder.
+From the command line run machine.exe located in the root folder.
 
 #### Linux
 
